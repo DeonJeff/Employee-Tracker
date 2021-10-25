@@ -69,7 +69,7 @@ function loadPrompts() {
          // View employees
          function viewEmployee() {
             
-            const Query = "SELECT employee.id, employee.first_name, employee.last_name, role.title AS role, CONCAT(manager.first_name,"" , manager.last_name) AS manager, department.name FROM employee  LEFT JOIN role ON employee.role_id = role.id  LEFT JOIN department ON role.department_id = department.id  LEFT JOIN employee manager ON  employee.manager_id = manager.id"
+            const Query = "SELECT employee.id, employee.first_name, employee.last_name, role.title AS role, CONCAT(manager.first_name,"" , manager.last_name) AS manager, department.name FROM employee  LEFT JOIN role ON employee.role_id = role.id  LEFT JOIN department ON role.department_id = department.id  LEFT JOIN employee manager ON  employee.manager_id = manager.id";
           
             connection.query(Query, (err, data) => {
                 if (err) throw err;
@@ -80,6 +80,7 @@ function loadPrompts() {
     
             function displayDepartments() {
                 const depQuery = `SELECT * FROM department`
+
                 connection.query(depQuery, (err, data) => {
                   if (err) throw err;
                   console.table(data);
@@ -89,6 +90,7 @@ function loadPrompts() {
               
               function displayRoles() {
                 const roleQuery = `SELECT * FROM role`
+
                 connection.query(roleQuery, (err, data) => {
                   if (err) throw err;
                   console.table(data);
@@ -100,7 +102,7 @@ function loadPrompts() {
               function displayEmpbyDepartment() {
                 const depQuery1 = ("SELECT * FROM department");
               
-                connection.query(depQuery1, (err, res,) => {
+                connection.query(depQuery1, (err, response) => {
                   if (err) throw err;
                   const departments = response.map(element => {
                     return { name: `${element.name}` }
@@ -116,7 +118,8 @@ function loadPrompts() {
                     const depQuery2 = `SELECT employee.first_name, employee.last_name, employee.role_id AS role, CONCAT(manager.first_name,' ',manager.last_name) AS manager, department.name as department 
                     FROM employee LEFT JOIN role on employee.role_id = role.id 
                     LEFT JOIN department ON role.department_id =department.id LEFT JOIN employee manager ON employee.manager_id=manager.id
-                    WHERE ?`
+                    WHERE ?`;
+
                     connection.query(depQuery2, [{ name: answer.dept }], function (err, res) {
                       if (err) throw err;
                       console.table(res)
@@ -150,7 +153,8 @@ function loadPrompts() {
                       LEFT JOIN role on employee.role_id = role.id
                       LEFT JOIN department on department.id = role.department_id
                       LEFT JOIN employee manager on employee.manager_id = manager.id
-                      WHERE employee.manager_id = ?`
+                      WHERE employee.manager_id = ?`;
+
                       connection.query(query2, [response.emByManager], (err, data) => {
                         if (err) throw err;
                         console.table(data);
@@ -159,4 +163,101 @@ function loadPrompts() {
                     })
                 })
               };
+
+              // new employee
+              function addEmployee() {
+                let addQuery = `SELECT employee.id, employee.first_name, employee.last_name, employee.role_id, role.title, department.name,
+                role.salary, employee.manager_id 
+                  FROM employee
+                  INNER JOIN role 
+                  On role.id = employee.role_id
+                  INNER JOIN department 
+                  ON department.id = role.department_id`;
+
+                connection.query(addQuery, (err, results) => {
+                  if (err) throw err;
+                  inquirer.prompt([
+                    {
+                      type: "input",
+                      name: "first_name",
+                      message: "Enter employee first name"
+                    }, {
+                      type: "input",
+                      name: "last_name",
+                      message: "Enter employee last name"
+                    }, {
+                      type: "list",
+                      name: "role",
+                      message: "Select employee title",
+                      choices: results.map(role => {
+                        return { name: role.title, value: role.role_id }
+                      })
+                    }, {
+                      type: "input",
+                      name: "manager",
+                      message: "Enter employee manager id"
+                    }])
+                    .then(answer => {
+                      console.log(answer);
+                      connection.query(
+                        "INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?,?,?,?)",
+                        [answer.first_name, answer.last_name, answer.role, answer.manager],
+                        function (err) {
+                          if (err) throw err
+                          console.log(`${answer.first_name} ${answer.last_name} added as a new employee`)
+                          init();
+                        })
+                    })
+                })
+              };
+
+              // remove empolyee
+              function removeEmployee() {
+                let query1 = `SELECT * FROM employee`
+                connection.query(query1, (err, res) => {
+                  if (err) throw err;
+                  inquirer.prompt([{
+                    type: "list",
+                    name: "emId",
+                    message: "Pick employee to remove",
+                    choices: res.map(employee => {
+                      return { name: `${employee.first_name} ${employee.last_name}`, value: employee.id }
+                    })
+                  }])
+                    .then(answer => {
+                      let query2 = `DELETE FROM employee WHERE ?`
+                      connection.query(query2, [{ id: answer.emId }], (err) => {
+                        if (err) throw err;
+                        console.log("Employee gone");
+                        init();
+                      })
+                    })
+                })
+              };
+
+              //remove role
+              function removeRole() {
+                let query1 = `SELECT * FROM role`
+                connection.query(query1, (err, res) => {
+                  if (err) throw err;
+                  inquirer.prompt([{
+                    type: "list",
+                    name: "roleId",
+                    message: "Select role to remove",
+                    choices: res.map(roles => {
+                      return { name: `${roles.title}`, value: roles.id }
+                    })
+                  }])
+                    .then(answer => {
+                      let query2 = `DELETE FROM role WHERE ?`
+                      connection.query(query2, [{ id: answer.roleId }], (err) => {
+                        if (err) throw err;
+                        console.log("Role gone");
+                        init();
+                      })
+                    })
+                })
+              };
+              
+
           }
