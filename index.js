@@ -69,7 +69,12 @@ function loadPrompts() {
          // View employees
          function viewEmployee() {
             
-            const Query = "SELECT employee.id, employee.first_name, employee.last_name, role.title AS role, CONCAT(manager.first_name,"" , manager.last_name) AS manager, department.name FROM employee  LEFT JOIN role ON employee.role_id = role.id  LEFT JOIN department ON role.department_id = department.id  LEFT JOIN employee manager ON  employee.manager_id = manager.id";
+            const Query = "SELECT employee.id  , employee.first_name, employee.last_name, role.title, department.name AS department, role.salary" 
+              CONCAT(manager.first_name,"" , manager.last_name) AS manager, 
+              FROM employee,  
+              LEFT JOIN role ON employee.role_id = role.id, 
+               LEFT JOIN department ON role.department_id = department.id, 
+                LEFT JOIN employee manager ON  employee.manager_id = manager.id"
           
             connection.query(Query, (err, data) => {
                 if (err) throw err;
@@ -78,6 +83,7 @@ function loadPrompts() {
               })
             };
     
+               // view Departments
             function displayDepartments() {
                 const depQuery = `SELECT * FROM department`
 
@@ -88,6 +94,7 @@ function loadPrompts() {
                 })
               };
               
+               // view roles
               function displayRoles() {
                 const roleQuery = `SELECT * FROM role`
 
@@ -234,8 +241,77 @@ function loadPrompts() {
                     })
                 })
               };
+              
+              //update role
+              function updateEmployeeRole() {
+                let query = "SELECT * FROM employee";
+              
+                connection.query(query, (err, response) => {
+              
+                  const employees = response.map(function (element) {
+                    return {
+                      name: `${element.first_name} ${element.last_name}`,
+                      value: element.id
+                    }
+                  });
 
-              //remove role
+                  inquirer.prompt([{
+                    type: "list",
+                    name: "employeeId",
+                    message: "Which employees role do you want to update",
+                    choices: employees
+                  }])
+                    .then(input1 => {
+                      connection.query("SELECT * FROM role", (err, data) => {
+              
+                        const roles = data.map(function (role) {
+                          return {
+                            name: role.title,
+                            value: role.id
+                          }
+                        });
+              
+                        inquirer.prompt([{
+                          type: "list",
+                          name: "roleId",
+                          message: "What's the new role",
+                          choices: roles
+                        }])
+                          .then(input2 => {
+                            const query1 = `UPDATE employee
+                      SET employee.role_id = ? 
+                      WHERE employee.id = ?`
+                            connection.query(query1, [input2.roleId, input1.employeeId], function (err, res) {
+                              var tempPosition;
+                              
+                              for (var k = 0; k < roles.length; k++) {
+                                if (roles[k].value == input2.roleId) {
+                                  tempPosition = roles[k].name;
+                                }
+                              }
+                              
+                              var tempName;
+                              for (var g = 0; g < employees.length; g++) {
+                                if (employees[g].value == input1.employeeId) {
+                                  tempName = employees[g].name;
+                                }
+                              }
+              
+                              if (res.changedRows === 1) {
+                                console.log(`Successfull ${tempName} to position of ${tempPosition}`);
+                              } else {
+                                console.log(`Error: ${tempName}'s current position is ${tempPosition}`)
+                              }
+                              
+                              init();
+                            })
+                          })
+                      })
+                    })
+                })
+              };
+      
+                //remove role
               function removeRole() {
                 let query1 = `SELECT * FROM role`
                 connection.query(query1, (err, res) => {
@@ -258,6 +334,54 @@ function loadPrompts() {
                     })
                 })
               };
-              
 
-          }
+              // add department
+              function addDepartment() {
+                let query1 = `SELECT * FROM department`
+                connection.query(query1, (err, res) => {
+                  if (err) throw err
+                  inquirer.prompt([{
+                    type: "input",
+                    name: "deptId",
+                    message: "Enter id for new department"
+                  }, {
+                    type: "input",
+                    name: "deptName",
+                    message: "Enter name for new department"
+                  }])
+                    .then(answers => {
+                      let query2 = `INSERT INTO department VALUES (?,?)`
+                      connection.query(query2, [answers.deptId, answers.deptName], (err) => {
+                        if (err) throw err
+                        console.log(`${answers.deptName} added as a new department`)
+                        init();
+                      })
+                    })
+                })
+              };
+
+                   // remove Dept
+              function removeDept() {
+                let query1 = `SELECT * FROM department`
+                connection.query(query1, (err, res) => {
+                  if (err) throw err;
+                  inquirer.prompt([{
+                    type: "list",
+                    name: "deptId",
+                    message: "Select a department to remove",
+                    choices: res.map(departments => {
+                      return { name: `${departments.name}`, value: departments.id }
+                    })
+                  }])
+                    .then(answer => {
+                      let query2 = `DELETE FROM department WHERE ?`
+                      connection.query(query2, [{ id: answer.deptId }], (err) => {
+                        if (err) throw err;
+                        console.log("Department removed")
+                        init();
+                      })
+                    })
+                })
+              };
+
+          
